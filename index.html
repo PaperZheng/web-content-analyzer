@@ -41,27 +41,35 @@
     <div id="result"></div>
 
     <script>
+        // 頁面加載時檢查是否有保存的 API 金鑰
+        window.onload = function() {
+            const savedApiKey = localStorage.getItem('openai_api_key');
+            if (savedApiKey) {
+                document.getElementById('apiKey').value = savedApiKey;
+            }
+        };
+
         document.getElementById('analyze').addEventListener('click', async () => {
             const apiKey = document.getElementById('apiKey').value;
+            // 保存 API 金鑰到本地存儲
+            localStorage.setItem('openai_api_key', apiKey);
+            
             const url = document.getElementById('url').value;
             const result = document.getElementById('result');
             
             try {
                 result.textContent = '正在分析...';
                 
-                // 使用 proxy 服務來避免 CORS 問題
                 const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
                 const response = await fetch(proxyUrl);
                 const html = await response.text();
                 
-                // 簡單解析HTML內容
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
                 const text = Array.from(doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6'))
                     .map(el => el.textContent)
                     .join(' ');
                 
-                // 調用 OpenAI API
                 const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -92,4 +100,4 @@
         });
     </script>
 </body>
-</html> 
+</html>
