@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>網頁內容分析</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <style>
+        body {
+            padding: 20px;
+            font-family: system-ui;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #007AFF;
+            color: white;
+            border: none;
+        }
+        #result {
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="input-group">
+        <input type="text" id="apiKey" placeholder="輸入 OpenAI API 金鑰">
+    </div>
+    <div class="input-group">
+        <input type="text" id="url" placeholder="輸入網址">
+    </div>
+    <button id="analyze">分析內容</button>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('analyze').addEventListener('click', async () => {
+            const apiKey = document.getElementById('apiKey').value;
+            const url = document.getElementById('url').value;
+            const result = document.getElementById('result');
+            
+            try {
+                result.textContent = '正在分析...';
+                
+                // 使用 proxy 服務來避免 CORS 問題
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                const response = await fetch(proxyUrl);
+                const html = await response.text();
+                
+                // 簡單解析HTML內容
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const text = Array.from(doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6'))
+                    .map(el => el.textContent)
+                    .join(' ');
+                
+                // 調用 OpenAI API
+                const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo",
+                        messages: [
+                            {
+                                role: "system",
+                                content: "你是一個專業的網頁內容分析助手，請提供重點摘要。"
+                            },
+                            {
+                                role: "user",
+                                content: `請幫我總結以下網頁內容的重點，並以條列式呈現：${text}`
+                            }
+                        ]
+                    })
+                });
+                
+                const data = await aiResponse.json();
+                result.textContent = data.choices[0].message.content;
+                
+            } catch (error) {
+                result.textContent = `錯誤：${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html> 
