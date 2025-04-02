@@ -9,30 +9,51 @@
         body {
             padding: 20px;
             font-family: system-ui;
+            max-width: 600px;
+            margin: 0 auto;
         }
         .input-group {
             margin-bottom: 15px;
         }
         input, button {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             margin: 5px 0;
             border-radius: 8px;
+            font-size: 16px;
+        }
+        input {
+            border: 1px solid #ccc;
         }
         button {
             background: #007AFF;
             color: white;
             border: none;
+            font-weight: bold;
         }
         #result {
             white-space: pre-wrap;
             margin-top: 20px;
+            line-height: 1.5;
+        }
+        .save-key {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+        }
+        #saveKey {
+            width: auto;
+            margin-right: 8px;
         }
     </style>
 </head>
 <body>
     <div class="input-group">
-        <input type="text" id="apiKey" placeholder="輸入 OpenAI API 金鑰">
+        <input type="password" id="apiKey" placeholder="輸入 OpenAI API 金鑰">
+        <div class="save-key">
+            <input type="checkbox" id="saveKey" checked>
+            <label for="saveKey">記住 API 金鑰</label>
+        </div>
     </div>
     <div class="input-group">
         <input type="text" id="url" placeholder="輸入網址">
@@ -41,9 +62,29 @@
     <div id="result"></div>
 
     <script>
-        // 頁面加載時檢查是否有保存的 API 金鑰
+        // 使用多種存儲方式
+        const storage = {
+            save: function(key, value) {
+                try {
+                    localStorage.setItem(key, value);
+                } catch (e) {
+                    document.cookie = `${key}=${value};max-age=31536000;path=/`;
+                }
+            },
+            load: function(key) {
+                try {
+                    const value = localStorage.getItem(key);
+                    if (value) return value;
+                } catch (e) {}
+                
+                const match = document.cookie.match(new RegExp(`${key}=([^;]+)`));
+                return match ? match[1] : null;
+            }
+        };
+
+        // 頁面加載時檢查保存的 API 金鑰
         window.onload = function() {
-            const savedApiKey = localStorage.getItem('openai_api_key');
+            const savedApiKey = storage.load('openai_api_key');
             if (savedApiKey) {
                 document.getElementById('apiKey').value = savedApiKey;
             }
@@ -51,11 +92,20 @@
 
         document.getElementById('analyze').addEventListener('click', async () => {
             const apiKey = document.getElementById('apiKey').value;
-            // 保存 API 金鑰到本地存儲
-            localStorage.setItem('openai_api_key', apiKey);
+            const shouldSave = document.getElementById('saveKey').checked;
+            
+            // 根據用戶選擇保存 API 金鑰
+            if (shouldSave) {
+                storage.save('openai_api_key', apiKey);
+            }
             
             const url = document.getElementById('url').value;
             const result = document.getElementById('result');
+            
+            if (!url) {
+                result.textContent = '請輸入網址';
+                return;
+            }
             
             try {
                 result.textContent = '正在分析...';
